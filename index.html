@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Johnson–Cook Explorer</title>
+<style>
+  :root{
+    --bg:#eef1f6; --panel:#ffffff; --panel-2:#f4f6fb; --line:#d3d9e4;
+    --ink:#111823; --ink-2:#47536a; --ink-3:#8894a8;
+    --accent:#c8703a;
+    --z-quasi:#8592a6; --z-mid:#5b83ad; --z-shpb:#d19a3c; --z-taylor:#cf5b52;
+    --shadow:0 1px 2px rgba(17,24,35,.06),0 8px 24px rgba(17,24,35,.06);
+    --radius:14px; --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0d121b; --panel:#141c28; --panel-2:#0f1622; --line:#26313f;
+      --ink:#eaf0f8; --ink-2:#9fb0c6; --ink-3:#6b7a90;
+      --z-quasi:#66748a; --z-mid:#4a6b93; --z-shpb:#b9863a; --z-taylor:#b74e46;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef1f6; --panel:#ffffff; --panel-2:#f4f6fb; --line:#d3d9e4;
+    --ink:#111823; --ink-2:#47536a; --ink-3:#8894a8;
+    --z-quasi:#8592a6; --z-mid:#5b83ad; --z-shpb:#d19a3c; --z-taylor:#cf5b52;
+    --shadow:0 1px 2px rgba(17,24,35,.06),0 8px 24px rgba(17,24,35,.06);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d121b; --panel:#141c28; --panel-2:#0f1622; --line:#26313f;
+    --ink:#eaf0f8; --ink-2:#9fb0c6; --ink-3:#6b7a90;
+    --z-quasi:#66748a; --z-mid:#4a6b93; --z-shpb:#b9863a; --z-taylor:#b74e46;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.5;
+    -webkit-font-smoothing:antialiased; padding:22px}
+  .wrap{max-width:1320px; margin:0 auto}
+
+  header.top{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px}
+  .brand h1{font-size:26px; line-height:1.1; margin:0; letter-spacing:-.01em; text-wrap:balance}
+  .brand p{margin:6px 0 0; color:var(--ink-2); font-size:14px; max-width:64ch}
+  .brand .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); font-weight:600}
+  .brand b{color:var(--ink)}
+  .hbtns{display:flex; gap:8px}
+  .theme-btn{font-family:var(--mono); font-size:12px; letter-spacing:.05em; color:var(--ink-2);
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:9px 13px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px; transition:border-color .15s,color .15s}
+  .theme-btn:hover{border-color:var(--accent); color:var(--ink)}
+
+  .app{display:grid; grid-template-columns:360px 1fr; gap:18px; align-items:start}
+  @media (max-width:960px){ .app{grid-template-columns:1fr} }
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow)}
+  .panel{padding:18px}
+  .panel h2{font-size:12px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3); margin:0 0 12px; font-weight:600;
+    display:flex; align-items:center; justify-content:space-between; gap:8px}
+  .panel h2 .hint{font-family:var(--mono); font-size:10px; letter-spacing:.04em; text-transform:none; color:var(--ink-3); font-weight:400}
+  .panel + .panel{border-top:1px solid var(--line)}
+
+  .modelsel{width:100%; font-family:var(--mono); font-size:12.5px; color:var(--ink); background:var(--panel-2);
+    border:1px solid var(--line); border-radius:10px; padding:9px 11px; cursor:pointer}
+
+  .mats{display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:260px; overflow-y:auto; padding-right:2px}
+  .mat{text-align:left; cursor:pointer; border:1px solid var(--line); background:var(--panel-2);
+    border-radius:11px; padding:9px 10px; transition:border-color .15s, background .15s, transform .05s;
+    display:flex; flex-direction:column; gap:2px}
+  .mat:hover{border-color:var(--mc)}
+  .mat:active{transform:translateY(1px)}
+  .mat[aria-pressed="true"]{border-color:var(--mc); background:color-mix(in srgb, var(--mc) 13%, var(--panel))}
+  .mat .nm{font-size:12.5px; font-weight:600; color:var(--ink); display:flex; align-items:center; gap:7px}
+  .mat .dot{width:9px; height:9px; border-radius:50%; background:var(--mc); display:inline-block; flex:none}
+  .mat .sub{font-family:var(--mono); font-size:10px; color:var(--ink-3); letter-spacing:.01em}
+
+  .slider{margin:13px 0}
+  .slider .row{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:4px}
+  .slider label{font-size:12.5px; color:var(--ink); font-weight:600}
+  .slider label .desc{font-weight:400; color:var(--ink-3); font-size:11px; margin-left:6px}
+  .slider .val{font-family:var(--mono); font-size:13px; color:var(--accent); font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .slider .val .u{color:var(--ink-3); font-weight:400; margin-left:3px}
+  input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:5px;
+    background:linear-gradient(90deg,var(--accent) var(--fill,50%), var(--line) var(--fill,50%)); outline:none; cursor:pointer; margin:6px 0}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:17px; height:17px; border-radius:50%;
+    background:var(--panel); border:2.5px solid var(--accent); box-shadow:0 1px 3px rgba(0,0,0,.25); cursor:pointer; transition:transform .1s}
+  input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.12)}
+  input[type=range]::-moz-range-thumb{width:17px; height:17px; border-radius:50%; background:var(--panel); border:2.5px solid var(--accent); cursor:pointer}
+  input[type=range]:focus-visible{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%, transparent)}
+
+  .btns{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .btn{font-family:var(--mono); font-size:12px; letter-spacing:.03em; color:var(--ink); background:var(--panel-2);
+    border:1px solid var(--line); border-radius:10px; padding:11px; cursor:pointer; transition:border-color .15s, background .15s}
+  .btn:hover{border-color:var(--accent); background:color-mix(in srgb,var(--accent) 8%, var(--panel-2))}
+  .btn.wide{grid-column:1 / -1}
+  .chk{display:flex; align-items:flex-start; gap:9px; font-size:12.5px; color:var(--ink); cursor:pointer; line-height:1.4}
+  .chk input{width:16px; height:16px; margin-top:1px; accent-color:var(--accent); cursor:pointer; flex:none}
+
+  .plot-card{overflow:hidden}
+  .plot-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 18px 2px}
+  .legend{display:flex; gap:14px; flex-wrap:wrap}
+  .legend span.item{display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; color:var(--ink-2)}
+  .legend i{width:22px; height:0; border-top-width:3px; border-top-style:solid; display:inline-block}
+  .lg-main{border-top-color:var(--accent)}
+  .lg-quasi{border-top-color:var(--z-quasi); border-top-style:dashed}
+  .lg-pure{border-top-color:var(--accent); border-top-style:dotted; opacity:.85}
+  .canvas-wrap{position:relative; width:100%; padding:6px 10px 2px}
+  canvas{width:100%; display:block; border-radius:8px; touch-action:none}
+  .zoomhint{font-family:var(--mono); font-size:10.5px; color:var(--ink-3); padding:0 18px 8px; text-align:right}
+  .plot-head .autoy{font-family:var(--mono); font-size:11px; color:var(--ink-2); align-items:center; white-space:nowrap; cursor:pointer; gap:7px}
+  .plot-head .autoy input{width:14px; height:14px; margin-top:0}
+  .plot-tools{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .mini-btn{font-family:var(--mono); font-size:11px; letter-spacing:.03em; color:var(--ink-2);
+    background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:6px 10px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px; transition:border-color .15s,color .15s; white-space:nowrap}
+  .mini-btn:hover{border-color:var(--accent); color:var(--ink)}
+  /* graf přišpendlený ve výhledu (desktop): scrolluješ ovládání, graf zůstává vidět */
+  @media (min-width:961px){
+    .col-right{align-self:stretch}
+    .col-right .plot-card{position:sticky; top:16px; z-index:5}
+  }
+  /* fullscreen: celá pracovní plocha (ovládání + graf) */
+  #app:fullscreen{background:var(--bg); padding:18px; overflow:auto}
+  #app:-webkit-full-screen{background:var(--bg); padding:18px; overflow:auto}
+  #app:fullscreen .col-right .plot-card{top:0}
+  /* fallback, když nativní Fullscreen API není povolené: na celé okno prohlížeče */
+  #app.fs-fallback{position:fixed; inset:0; z-index:9999; margin:0; max-width:none; background:var(--bg); padding:18px; overflow:auto}
+  #app.fs-fallback .col-right .plot-card{top:0}
+
+  .readouts{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:1px; background:var(--line); border-top:1px solid var(--line)}
+  .ro{background:var(--panel); padding:12px 14px}
+  .ro .k{font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+  .ro .v{font-family:var(--mono); font-size:19px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums; margin-top:3px}
+  .ro .v .u{font-size:12px; color:var(--ink-3); font-weight:400; margin-left:3px}
+
+  .regime .track{position:relative; height:52px; border-radius:10px; overflow:hidden; display:flex; border:1px solid var(--line)}
+  .regime .zone{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    color:#fff; text-align:center; padding:0 4px; border-right:1px solid rgba(255,255,255,.18)}
+  .regime .zone:last-child{border-right:none}
+  .regime .zone .t{font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:.02em}
+  .regime .zone .r{font-family:var(--mono); font-size:9.5px; opacity:.85}
+  .regime .mk{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ink); box-shadow:0 0 0 1px var(--panel)}
+  .regime .mk::before{content:""; position:absolute; top:-1px; left:-5px; border:6px solid transparent; border-top-color:var(--ink)}
+  .regime .bub{position:absolute; top:-24px; transform:translateX(-50%); font-family:var(--mono); font-size:11px; font-weight:600;
+    color:var(--ink); background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:2px 7px; white-space:nowrap}
+  .regime .cap{font-size:11.5px; color:var(--ink-3); margin-top:26px}
+
+  .formula{font-family:var(--mono); font-size:13px; line-height:1.9; color:var(--ink-2); background:var(--panel-2);
+    border:1px solid var(--line); border-radius:11px; padding:13px 14px; overflow-x:auto}
+  .formula .lead{color:var(--ink); font-size:14px}
+  .formula b{color:var(--accent); font-weight:600}
+  .formula .term{color:var(--ink)}
+  .note{font-size:11.5px; color:var(--ink-3); margin-top:10px; line-height:1.55}
+
+  .puzzle{margin-top:18px}
+  .puzzle .grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:4px}
+  @media (max-width:960px){ .puzzle .grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:520px){ .puzzle .grid{grid-template-columns:1fr} }
+  .pc{background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:14px 15px; position:relative}
+  .pc .tag{font-family:var(--mono); font-size:10.5px; letter-spacing:.04em; font-weight:600; padding:2px 8px; border-radius:20px; display:inline-block; margin-bottom:8px}
+  .pc h3{margin:0 0 6px; font-size:14px; color:var(--ink)}
+  .pc p{margin:0; font-size:12.5px; color:var(--ink-2); line-height:1.55}
+  .pc p b{color:var(--ink)}
+  .try{margin-top:16px; background:color-mix(in srgb,var(--accent) 7%, var(--panel-2)); border:1px solid var(--line); border-radius:12px; padding:14px 16px}
+  .try h3{margin:0 0 8px; font-size:13px; color:var(--ink); letter-spacing:.02em}
+  .try ul{margin:0; padding-left:18px; columns:2; column-gap:26px}
+  @media (max-width:640px){ .try ul{columns:1} }
+  .try li{font-size:12.5px; color:var(--ink-2); margin:4px 0; break-inside:avoid}
+  .try code{font-family:var(--mono); color:var(--accent); font-size:12px}
+
+  footer{margin-top:16px; font-size:11.5px; color:var(--ink-3); text-align:center; line-height:1.6}
+  footer code{font-family:var(--mono)}
+  footer a{color:var(--accent); text-decoration:none}
+  footer a:hover{text-decoration:underline}
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="eyebrow" id="eyebrow"></div>
+      <h1>Johnson–Cook Explorer</h1>
+      <p id="intro"></p>
+    </div>
+    <div class="hbtns">
+      <button class="theme-btn" id="langBtn" type="button" aria-label="Language / Jazyk"><span>🌐</span><span id="langTxt">EN</span></button>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Light/Dark"><span id="themeIcon">◐</span><span id="themeTxt"></span></button>
+    </div>
+  </header>
+
+  <div class="app" id="app">
+    <div class="card">
+      <div class="panel">
+        <h2><span id="h-model"></span></h2>
+        <select class="modelsel" id="model">
+          <option value="full" id="opt-full"></option>
+          <option value="rate" id="opt-rate" selected></option>
+          <option value="static" id="opt-static"></option>
+        </select>
+      </div>
+      <div class="panel">
+        <h2><span id="h-material"></span> <span class="hint" id="matcount"></span></h2>
+        <div class="mats" id="mats"></div>
+      </div>
+      <div class="panel" id="sliders"></div>
+      <div class="panel" id="fracture"></div>
+      <div class="panel">
+        <div class="btns">
+          <button class="btn" id="reset" type="button"></button>
+          <button class="btn" id="fit" type="button"></button>
+          <button class="btn wide" id="png" type="button"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <div class="card plot-card">
+        <div class="plot-head">
+          <div class="legend">
+            <span class="item"><i class="lg-main"></i><span id="lg-main"></span></span>
+            <span class="item"><i class="lg-quasi"></i><span id="lg-quasi"></span></span>
+            <span class="item"><i class="lg-pure"></i><span id="lg-pure"></span></span>
+          </div>
+          <div class="plot-tools">
+            <label class="chk autoy"><input type="checkbox" id="autoY"><span id="autoY-lbl"></span></label>
+            <button class="mini-btn" id="fsBtn" type="button"><span id="fsTxt"></span></button>
+          </div>
+        </div>
+        <div class="canvas-wrap"><canvas id="plot"></canvas></div>
+        <div class="zoomhint" id="zoomhint"></div>
+        <div class="readouts" id="readouts"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card panel regime" style="margin-top:18px">
+    <h2><span id="h-regime"></span> <span class="hint" id="regime-hint"></span></h2>
+    <div class="track" id="regime"></div>
+    <div class="cap" id="regimeCap"></div>
+  </div>
+
+  <div class="card panel" style="margin-top:18px">
+    <h2><span id="h-formula"></span></h2>
+    <div class="formula" id="formula"></div>
+    <div class="note" id="rateNote"></div>
+  </div>
+
+  <div class="card panel puzzle">
+    <h2><span id="h-puzzle"></span></h2>
+    <div class="grid" id="puzzleGrid"></div>
+    <div class="try" id="tryBox"></div>
+  </div>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================ i18n (CZ / EN, akademická terminologie) */
+const I18N = {
+ cs:{
+  eyebrow:"Konstitutivní modely · plasticita za vysokých rychlostí deformace",
+  intro:"Interaktivní diagram napětí–deformace. Vyber materiál, hýbej posuvníky a sleduj, jak <b>A, B, n, C</b> a rychlost deformace <b>ε̇</b> tvarují tokovou křivku — a jak posuvník ε̇ odpovídá reálnému experimentu: od <b>zkušebního stroje</b> přes <b>SHPB</b> po <b>Taylorův rázový test</b>.",
+  theme_light:"Světlý", theme_dark:"Tmavý",
+  h_model:"Model", h_material:"Materiál", matcount:n=>n+" sad",
+  h_params:"Parametry", params_sub:"Johnson–Cook",
+  model_full:"Johnson–Cook — úplný (termomechanický)", model_rate:"Johnson–Cook — izotermický (rychlostní)", model_static:"Johnson–Cook — statický (mocninné zpevnění)",
+  reset_mat:"↺ Reset materiálu", reset_view:"⤢ Reset pohledu", png:"⭳ Uložit graf jako PNG",
+  lg_main:"Odezva modelu @ ε̇, T", lg_quasi:"Kvazistatický základ (A+B·εⁿ)", lg_pure:"Bez elastiky (σ vs εₚ)",
+  zoomhint:"Ctrl + kolečko = zoom osy ε · dvojklik = reset pohledu",
+  autoy_toggle:"Auto měřítko osy σ",
+  fs_enter:"⛶ Celá obrazovka", fs_exit:"⤢ Zavřít celou obrazovku",
+  ro_sy:"σy (mez kluzu)", ro_R:"rychlostní faktor R", ro_theta:"θ (tepelné změkčení)", ro_ey:"ε při mezi kluzu", ro_smax:"σ @ ε_max",
+  ax_x:"deformace  ε  [–]", ax_y:"napětí  σ  [MPa]", lbl_E:"sklon E", lbl_sy:s=>"σy = "+s+" MPa",
+  h_regime:"Kde leží zvolená rychlost deformace", regime_hint:"posuvník ε̇ ↔ experiment",
+  regime_cap:(e,name,note)=>`Aktuální ε̇ ≈ <b style="color:var(--ink)">${e} s⁻¹</b> → režim <b style="color:var(--ink)">${name}</b> (${note}).`,
+  h_formula:"Model — dosazené hodnoty",
+  formula_lead:{
+    full:`σ = [ <b>A</b> + <b>B</b>·εⁿ ] · [ 1 + <b>C</b>·ln(ε̇/ε̇₀) ] · [ 1 − T*ᵐ ]`,
+    rate:`σ = [ <b>A</b> + <b>B</b>·εⁿ ] · [ 1 + <b>C</b>·ln(ε̇/ε̇₀) ]`,
+    static:`σ = <b>A</b> + <b>B</b>·εⁿ`,
+  },
+  formula_elastic:"elastika:", formula_upto:"do",
+  ratenote:(R,ed)=>`R = 1 + C·ln(ε̇/ε̇₀) = ${R} při ε̇ = ${ed} s⁻¹. Plná křivka = odezva modelu; šedá čárkovaná = kvazistatický základ A+B·εⁿ.`,
+  ratenote_clamp:" Pod referenční rychlostí je R<1 (změkčení) — LS-DYNA člen typicky omezuje na R≥1.",
+  ratenote_static:"Statický model: σ = A + B·εⁿ (bez vlivu rychlosti deformace a teploty). Šedá čárkovaná splývá s plnou.",
+  thermnote:(th,T)=>` Tepelné změkčení θ = 1 − T*ᵐ = ${th} při T = ${T} K (T* = (T−293)/(Tₜ−293)).`,
+  h_fracture:"Porušení materiálu",
+  frac_toggle:"Zobrazit mez lomu (JC kritérium porušení)",
+  frac_note:"εf = [D1 + D2·exp(D3·σ*)]·[1 + D4·ln ε̇*]·[1 + D5·T*]. Za mezí lomu už tokové napětí NEPLATÍ (materiál praskl). D1–D5 jsou ilustrativní — nahraď svými.",
+  ro_ef:"εf (deform. při lomu)",
+  frac_marker:ef=>"fraktura εf="+ef,
+  frac_invalid:"rovnice neplatí (materiál porušen)",
+  frac_off:ef=>`fraktura při εf=${ef} — mimo rozsah (zvětši ε_max nebo σ*)`,
+  fparams:{
+    tri:{name:"σ* — triaxialita napětí", desc:"tah 1/3, smyk 0, vrub >1/3"},
+    D1:{name:"D1 — báze", desc:""}, D2:{name:"D2 — amplituda", desc:""},
+    D3:{name:"D3 — vliv triaxiality", desc:""}, D4:{name:"D4 — vliv rychlosti", desc:""},
+    D5:{name:"D5 — vliv teploty", desc:""},
+  },
+  h_puzzle:"Jak to zapadá dohromady — od měření k identifikaci",
+  pc:[
+    {tag:"Kvazistatika · ε̇≈10⁻³", h3:"A — mez kluzu", p:"Kde končí elastická přímka (sklon <b>E</b>) a začíná plastická deformace. Měří se <b>tahovou/tlakovou zkouškou</b> na univerzálním zkušebním stroji."},
+    {tag:"Kvazistatika · tvar křivky", h3:"B, n — deformační zpevnění", p:"Jak materiál zpevňuje s rostoucí plastickou deformací podle <b>B·εⁿ</b>. Tvar plyne z téže kvazistatické křivky (velké <b>n</b> = pozvolné, malé = rychlá saturace)."},
+    {tag:"SHPB · ε̇≈10²–10⁴", h3:"C — rychlostní citlivost", p:"O kolik vzroste napětí při zvýšení rychlosti deformace. Identifikuje se porovnáním kvazistatiky a <b>Split-Hopkinsonovy tyče (Kolského tyč)</b>, která přímo měří dynamickou tokovou křivku."},
+    {tag:"Taylor · ε̇≈10⁴–10⁶", h3:"Validace: Taylorův test", p:"Váleček naráží do tuhé stěny; parametry se zpětně identifikují z <b>deformovaného tvaru a délky</b> (inverzní identifikace). Nejvyšší rychlosti — zde dominuje <b>C</b>."},
+  ],
+  try_h:"Vyzkoušej (a sleduj křivku)",
+  try:[
+    "Zvětši <code>C</code> a zrychli <code>ε̇</code> → celá křivka se zvedne (dynamické zpevnění).",
+    "Zmenši <code>n</code> → zpevnění rychle saturuje, křivka se „položí\".",
+    "Zvětši <code>E</code> → strmější elastická přímka, dřívější mez kluzu.",
+    "Kolečkem přibliž <code>ε_max</code> → uvidíš zlom u meze kluzu a rozdíl <b>elastoplastika vs. čistá JC</b>.",
+    "Přepni měkkou <b>měď</b> ↔ tvrdý <b>wolfram/S-7</b> → řádový skok v A.",
+    "Posuň <code>ε̇</code> a v pruhu výše sleduj, který <b>experiment</b> tu rychlost pokrývá.",
+  ],
+  footer:`Zjednodušený Johnson–Cook (bez teplotního členu): <code>σ = [A + B·εₚⁿ]·[1 + C·ln(ε̇/ε̇₀)]</code>, elastika <code>σ = E·ε</code> do meze <code>σy = A·R</code>. Přednastavené sady jsou reprezentativní literární hodnoty (Johnson &amp; Cook 1983 a odvozené); v praxi se liší dle šarže a zdroje. <code>ε̇₀ = 1 s⁻¹</code>. Architektura je připravená na další modely (Zerilli–Armstrong, Cowper–Symonds…).<br><b>Autor: Jan Zbirovský</b> · <a href="https://github.com/zbj3ji/Johnson-Cook-Explorer" target="_blank" rel="noopener">GitHub</a> · <a href="https://www.zbirovsky.com" target="_blank" rel="noopener">zbirovsky.com</a>`,
+  params:{
+    A:{name:"A — mez kluzu σy", desc:"počátek plasticity"},
+    B:{name:"B — modul zpevnění", desc:"velikost zpevnění"},
+    n:{name:"n — exponent zpevnění", desc:"tvar B·εⁿ"},
+    C:{name:"C — rychlostní citlivost", desc:"vliv rychlosti deformace"},
+    E:{name:"E — Youngův modul", desc:"sklon elastiky"},
+    T:{name:"T — teplota", desc:"tepelné změkčení"},
+    m:{name:"m — teplotní exponent", desc:"měknutí 1−T*ᵐ"},
+    edot:{name:"ε̇ — rychlost deformace", desc:"log₁₀ · kvazistatika→ráz"},
+    emax:{name:"ε_max — rozsah osy ε", desc:"přiblíží mez kluzu"},
+  },
+  regimes:[
+    {name:"Kvazistatika", note:"univerzální zkušební stroj"},
+    {name:"Střední", note:"servohydraulika / drop tower"},
+    {name:"SHPB / Kolsky", note:"Split-Hopkinsonova tyč"},
+    {name:"Taylor / ráz", note:"Taylorův test, penetrace"},
+  ],
+  mats:{copper:"Měď", brass:"Mosaz", nickel:"Nikl", armco:"Železo", steel1006:"Ocel",
+        al2024:"Hliník", al7039:"Hliník", steel4340:"Ocel", s7:"Nástr. ocel", tungsten:"Wolfram", titanium:"Titan"},
+ },
+ en:{
+  eyebrow:"Constitutive models · high-strain-rate plasticity",
+  intro:"Interactive stress–strain diagram. Pick a material, move the sliders and watch how <b>A, B, n, C</b> and the strain rate <b>ε̇</b> shape the flow curve — and how the ε̇ slider maps to a real experiment: from the <b>universal testing machine</b> through <b>SHPB</b> to the <b>Taylor impact test</b>.",
+  theme_light:"Light", theme_dark:"Dark",
+  h_model:"Model", h_material:"Material", matcount:n=>n+" sets",
+  h_params:"Parameters", params_sub:"Johnson–Cook",
+  model_full:"Johnson–Cook — full (thermomechanical)", model_rate:"Johnson–Cook — isothermal (rate-dependent)", model_static:"Johnson–Cook — static (power-law hardening)",
+  reset_mat:"↺ Reset material", reset_view:"⤢ Reset view", png:"⭳ Save plot as PNG",
+  lg_main:"Model response @ ε̇, T", lg_quasi:"Quasi-static baseline (A+B·εⁿ)", lg_pure:"No elastic part (σ vs εₚ)",
+  zoomhint:"Ctrl + wheel = zoom ε axis · double-click = reset view",
+  autoy_toggle:"Auto-scale σ axis",
+  fs_enter:"⛶ Fullscreen", fs_exit:"⤢ Exit fullscreen",
+  ro_sy:"σy (yield stress)", ro_R:"strain-rate factor R", ro_theta:"θ (thermal softening)", ro_ey:"ε at yield", ro_smax:"σ @ ε_max",
+  ax_x:"strain  ε  [–]", ax_y:"stress  σ  [MPa]", lbl_E:"slope E", lbl_sy:s=>"σy = "+s+" MPa",
+  h_regime:"Where the selected strain rate lies", regime_hint:"ε̇ slider ↔ experiment",
+  regime_cap:(e,name,note)=>`Current ε̇ ≈ <b style="color:var(--ink)">${e} s⁻¹</b> → regime <b style="color:var(--ink)">${name}</b> (${note}).`,
+  h_formula:"Model — substituted values",
+  formula_lead:{
+    full:`σ = [ <b>A</b> + <b>B</b>·εⁿ ] · [ 1 + <b>C</b>·ln(ε̇/ε̇₀) ] · [ 1 − T*ᵐ ]`,
+    rate:`σ = [ <b>A</b> + <b>B</b>·εⁿ ] · [ 1 + <b>C</b>·ln(ε̇/ε̇₀) ]`,
+    static:`σ = <b>A</b> + <b>B</b>·εⁿ`,
+  },
+  formula_elastic:"elastic:", formula_upto:"up to",
+  ratenote:(R,ed)=>`R = 1 + C·ln(ε̇/ε̇₀) = ${R} at ε̇ = ${ed} s⁻¹. Solid curve = model response; grey dashed = quasi-static baseline A+B·εⁿ.`,
+  ratenote_clamp:" Below the reference rate R<1 (softening) — LS-DYNA typically clamps the term to R≥1.",
+  ratenote_static:"Static model: σ = A + B·εⁿ (no strain-rate or thermal effect). Grey dashed coincides with the solid curve.",
+  thermnote:(th,T)=>` Thermal softening θ = 1 − T*ᵐ = ${th} at T = ${T} K (T* = (T−293)/(Tₘ−293)).`,
+  h_fracture:"Material failure",
+  frac_toggle:"Show fracture limit (JC failure criterion)",
+  frac_note:"εf = [D1 + D2·exp(D3·σ*)]·[1 + D4·ln ε̇*]·[1 + D5·T*]. Beyond the fracture limit the flow stress is INVALID (the material has failed). D1–D5 are illustrative — replace with your own.",
+  ro_ef:"εf (fracture strain)",
+  frac_marker:ef=>"fracture εf="+ef,
+  frac_invalid:"equation invalid (material failed)",
+  frac_off:ef=>`fracture at εf=${ef} — off-range (increase ε_max or σ*)`,
+  fparams:{
+    tri:{name:"σ* — stress triaxiality", desc:"tension 1/3, shear 0, notch >1/3"},
+    D1:{name:"D1 — baseline", desc:""}, D2:{name:"D2 — amplitude", desc:""},
+    D3:{name:"D3 — triaxiality effect", desc:""}, D4:{name:"D4 — rate effect", desc:""},
+    D5:{name:"D5 — temperature effect", desc:""},
+  },
+  h_puzzle:"How it fits together — from measurement to identification",
+  pc:[
+    {tag:"Quasi-static · ε̇≈10⁻³", h3:"A — yield stress", p:"Where the elastic line (slope <b>E</b>) ends and plastic deformation begins. Measured by a <b>tensile/compression test</b> on a universal testing machine."},
+    {tag:"Quasi-static · curve shape", h3:"B, n — strain hardening", p:"How the material hardens with increasing plastic strain via <b>B·εⁿ</b>. The shape comes from the same quasi-static curve (large <b>n</b> = gradual, small = quick saturation)."},
+    {tag:"SHPB · ε̇≈10²–10⁴", h3:"C — strain-rate sensitivity", p:"How much the stress rises when you deform faster. Identified by comparing quasi-static data with the <b>Split-Hopkinson (Kolsky) bar</b>, which directly measures the dynamic flow curve."},
+    {tag:"Taylor · ε̇≈10⁴–10⁶", h3:"Validation: Taylor rod", p:"A cylinder impacts a rigid wall; the parameters are recovered from the <b>deformed shape and length</b> (inverse identification). Highest rates — where <b>C</b> dominates."},
+  ],
+  try_h:"Try it (and watch the curve)",
+  try:[
+    "Increase <code>C</code> and raise <code>ε̇</code> → the whole curve lifts (dynamic strengthening).",
+    "Decrease <code>n</code> → hardening saturates quickly, the curve flattens.",
+    "Increase <code>E</code> → steeper elastic line, earlier yield.",
+    "Zoom <code>ε_max</code> with the wheel → see the yield knee and the <b>elastoplastic vs pure-JC</b> difference.",
+    "Switch soft <b>copper</b> ↔ hard <b>tungsten/S-7</b> → an order-of-magnitude jump in A.",
+    "Move <code>ε̇</code> and watch the strip above for which <b>experiment</b> covers that rate.",
+  ],
+  footer:`Simplified Johnson–Cook (no thermal term): <code>σ = [A + B·εₚⁿ]·[1 + C·ln(ε̇/ε̇₀)]</code>, elastic <code>σ = E·ε</code> up to <code>σy = A·R</code>. Preset sets are representative literature values (Johnson &amp; Cook 1983 and derived); they vary with batch and source. <code>ε̇₀ = 1 s⁻¹</code>. The architecture is ready for further models (Zerilli–Armstrong, Cowper–Symonds…).<br><b>Author: Jan Zbirovský</b> · <a href="https://github.com/zbj3ji/Johnson-Cook-Explorer" target="_blank" rel="noopener">GitHub</a> · <a href="https://www.zbirovsky.com" target="_blank" rel="noopener">zbirovsky.com</a>`,
+  params:{
+    A:{name:"A — yield stress σy", desc:"onset of plasticity"},
+    B:{name:"B — hardening modulus", desc:"hardening magnitude"},
+    n:{name:"n — hardening exponent", desc:"shape of B·εⁿ"},
+    C:{name:"C — strain-rate sensitivity", desc:"strain-rate effect"},
+    E:{name:"E — Young's modulus", desc:"elastic slope"},
+    T:{name:"T — temperature", desc:"thermal softening"},
+    m:{name:"m — thermal exponent", desc:"softening 1−T*ᵐ"},
+    edot:{name:"ε̇ — strain rate", desc:"log₁₀ · quasi-static→impact"},
+    emax:{name:"ε_max — ε axis range", desc:"zoom the yield knee"},
+  },
+  regimes:[
+    {name:"Quasi-static", note:"universal testing machine"},
+    {name:"Intermediate", note:"servo-hydraulic / drop tower"},
+    {name:"SHPB / Kolsky", note:"Split-Hopkinson bar"},
+    {name:"Taylor / impact", note:"Taylor test, penetration"},
+  ],
+  mats:{copper:"Copper", brass:"Brass", nickel:"Nickel", armco:"Iron", steel1006:"Steel",
+        al2024:"Aluminium", al7039:"Aluminium", steel4340:"Steel", s7:"Tool steel", tungsten:"Tungsten", titanium:"Titanium"},
+ },
+};
+let lang = "en";
+const t = k => I18N[lang][k];
+
+/* ============================================================ modely (3 varianty JC: úplný → izotermický → statický) */
+const EDOT0 = 1.0, TROOM = 293;
+const rateJC = P => 1 + P.C*Math.log(Math.pow(10,P.edot)/EDOT0);
+const thermJC = P => { const ts=Math.min(Math.max((P.T-TROOM)/(P.Tmelt-TROOM),0),1); return 1 - Math.pow(ts, P.m); };
+const MODELS = {
+  full:  { uses:["A","B","n","C","E","T","m","edot","emax"], rate:rateJC,        therm:thermJC },
+  rate:  { uses:["A","B","n","C","E","edot","emax"],         rate:rateJC,        therm:()=>1   },
+  static:{ uses:["A","B","n","E","emax"],                    rate:()=>1,         therm:()=>1   },
+};
+let modelKey = "rate";
+const M = ()=> MODELS[modelKey];
+
+/* ============================================================ materiály (JC sady; m,Tmelt dle Johnson & Cook 1983)
+   D = [D1,D2,D3,D4,D5] parametry porušení — publikované (Cu, 4340, 2024, Ti), jinak ilustrativní. */
+const D_ILUS = [0.30, 0.50, -2.50, 0.010, 0.50];   // ilustrativní default
+const MATERIALS = {
+  copper:   {grade:"OFHC",       A:90,   B:292, n:0.31, C:0.025, E:124, m:1.09, Tmelt:1356, D:[0.54,4.89,-3.03,0.014,1.12], color:"#c8703a"},
+  brass:    {grade:"Cartridge",  A:112,  B:505, n:0.42, C:0.009, E:110, m:1.68, Tmelt:1189, D:D_ILUS, color:"#b8902f"},
+  nickel:   {grade:"Nickel 200", A:163,  B:648, n:0.33, C:0.006, E:207, m:1.44, Tmelt:1726, D:D_ILUS, color:"#5aa06f"},
+  armco:    {grade:"Armco",      A:175,  B:380, n:0.32, C:0.060, E:200, m:0.55, Tmelt:1811, D:D_ILUS, color:"#7b8a99"},
+  steel1006:{grade:"1006",       A:350,  B:275, n:0.36, C:0.022, E:200, m:1.00, Tmelt:1811, D:D_ILUS, color:"#5b83ad"},
+  al2024:   {grade:"2024-T351",  A:265,  B:426, n:0.34, C:0.015, E:73,  m:1.00, Tmelt:775,  D:[0.13,0.13,-1.50,0.011,0.00], color:"#3fa7b3"},
+  al7039:   {grade:"7039",       A:337,  B:343, n:0.41, C:0.010, E:70,  m:1.00, Tmelt:877,  D:D_ILUS, color:"#49b6cf"},
+  steel4340:{grade:"4340",       A:792,  B:510, n:0.26, C:0.014, E:200, m:1.03, Tmelt:1793, D:[0.05,3.44,-2.12,0.002,0.61], color:"#3f63a0"},
+  s7:       {grade:"S-7",        A:1539, B:477, n:0.18, C:0.012, E:205, m:1.00, Tmelt:1763, D:D_ILUS, color:"#8a5cd0"},
+  tungsten: {grade:"WHA",        A:1506, B:177, n:0.12, C:0.016, E:340, m:1.00, Tmelt:1723, D:D_ILUS, color:"#6d7186"},
+  titanium: {grade:"Ti-6Al-4V",  A:862,  B:331, n:0.34, C:0.012, E:114, m:0.80, Tmelt:1878, D:[-0.09,0.25,-0.50,0.014,3.87], color:"#b25fae"},
+};
+
+const PARAMS = [
+  {k:"A",    u:"MPa", min:0,    max:1800, step:1},
+  {k:"B",    u:"MPa", min:0,    max:1200, step:1},
+  {k:"n",    u:"",    min:0.02, max:1.0,  step:0.01},
+  {k:"C",    u:"",    min:0,    max:0.10, step:0.001},
+  {k:"E",    u:"GPa", min:40,   max:400,  step:1},
+  {k:"T",    u:"K",   min:293,  max:1900, step:5},
+  {k:"m",    u:"",    min:0.2,  max:2.0,  step:0.01},
+  {k:"edot", u:"1/s", min:-3,   max:6,    step:0.05, log:true},
+  {k:"emax", u:"",    min:0.02, max:0.5,  step:0.005},
+];
+/* posuvníky kritéria porušení (zobrazí se po zapnutí přepínače) */
+const FRAC_PARAMS = [
+  {k:"tri", u:"", min:-0.33, max:1.5,  step:0.01},
+  {k:"D1",  u:"", min:-0.5,  max:1.0,  step:0.01},
+  {k:"D2",  u:"", min:0,     max:6.0,  step:0.01},
+  {k:"D3",  u:"", min:-4.0,  max:2.0,  step:0.01},
+  {k:"D4",  u:"", min:-0.05, max:0.10, step:0.001},
+  {k:"D5",  u:"", min:0,     max:4.0,  step:0.01},
+];
+let fracEnabled = false;
+/* režimy: [odlog, dolog, cssVar, ε̇ text] — názvy/poznámky z i18n */
+const REGIMES = [[-3,0,"--z-quasi","10⁻³–10⁰"],[0,2,"--z-mid","10⁰–10²"],[2,4,"--z-shpb","10²–10⁴"],[4,6,"--z-taylor","10⁴–10⁶"]];
+
+let current = "copper";
+let P = {};
+let themeDark = false;
+let autoY = false;        // false = osa σ zamrzlá na výchozí hodnotě; true = auto-přizpůsobení
+let ymaxFixed = null;     // zamrzlé maximum osy σ
+
+function loadMaterial(key){
+  const m = MATERIALS[key], keep = P.emax, tri = P.tri;
+  P = {A:m.A, B:m.B, n:m.n, C:m.C, E:m.E, m:m.m, Tmelt:m.Tmelt, T:TROOM, edot:2.5, emax: keep || 0.15,
+       tri: tri==null ? 1/3 : tri, D1:m.D[0], D2:m.D[1], D3:m.D[2], D4:m.D[3], D5:m.D[4]};
+  document.documentElement.style.setProperty("--accent", m.color);
+  freezeYAxis();          // zamrzni osu σ na výchozí konfiguraci tohoto materiálu
+}
+function fractureStrain(){   // JC kritérium porušení (1985): εf(σ*, ε̇*, T*)
+  const es=Math.pow(10,P.edot)/EDOT0, Ts=Math.min(Math.max((P.T-TROOM)/(P.Tmelt-TROOM),0),1);
+  const ef=(P.D1 + P.D2*Math.exp(P.D3*P.tri))*(1 + P.D4*Math.log(es))*(1 + P.D5*Ts);
+  return Math.max(ef, 1e-4);
+}
+
+/* ============================================================ fyzika / křivky */
+const Empa  = ()=> P.E*1000;
+const hard  = (ep)=> P.A + P.B*Math.pow(Math.max(ep,0),P.n);   // zpevnění A + B·εⁿ
+const rateFactor = ()=> M().rate(P);                            // rychlostní faktor R
+const thermFactor= ()=> M().therm(P);                           // tepelné změkčení θ
+const flow  = (ep)=> hard(ep)*rateFactor()*thermFactor();       // aktivní model
+const flowBase = (ep)=> hard(ep);                               // kvazistatický základ (R=1, θ=1)
+function buildEP(fn){
+  const sy=fn(0), E=Empa(), ey=sy/E, pts=[[0,0],[ey,sy]];
+  for(let ep=0; ep<=P.emax; ep+=P.emax/400){ const s=fn(ep), e=ep+s/E; if(e>P.emax) break; pts.push([e,s]); }
+  return {pts, sy, ey};
+}
+function pureJC(){ const pts=[]; for(let ep=0; ep<=P.emax; ep+=P.emax/400) pts.push([ep, flow(ep)]); return pts; }
+function dataYmax(){ const ep=buildEP(flow), eq=buildEP(flowBase);   // měřítko osy σ z aktuálních dat
+  return niceMax(Math.max(flow(P.emax), hard(P.emax), ep.sy, eq.sy, 1)*1.08); }
+function freezeYAxis(){ ymaxFixed = dataYmax(); }                    // zamrzni osu σ na aktuální konfiguraci
+
+/* ============================================================ kreslení */
+const cv=document.getElementById("plot"), ctx=cv.getContext("2d");
+let W=0,H=0,DPR=1; const PAD={l:64,r:18,t:16,b:46};
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function resize(){
+  const rect=cv.parentElement.getBoundingClientRect(); DPR=Math.min(window.devicePixelRatio||1,2);
+  W=Math.max(320,rect.width-20); H=Math.max(360,Math.min(560,W*0.60));
+  cv.width=W*DPR; cv.height=H*DPR; cv.style.height=H+"px"; ctx.setTransform(DPR,0,0,DPR,0,0); draw();
+}
+function niceMax(v){ if(v<=0) return 1; const p=Math.pow(10,Math.floor(Math.log10(v))), f=v/p; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p; }
+
+function draw(){
+  const R=rateFactor(), ep=buildEP(flow), eq=buildEP(flowBase), pj=pureJC();
+  const accent=MATERIALS[current].color;
+  const ink=css("--ink"), ink2=css("--ink-2"), ink3=css("--ink-3"), grid=css("--line"), axis=css("--ink-3"), quasi=css("--z-quasi");
+  const xmax=P.emax;
+  // osa σ: zamrzlá (default) nebo automatická (checkbox). Zamrzlou drž i tažením posuvníků.
+  const ymax = (autoY || ymaxFixed==null) ? niceMax(Math.max(flow(P.emax),hard(P.emax),ep.sy,eq.sy,1)*1.08) : ymaxFixed;
+  const X=e=>PAD.l+(e/xmax)*(W-PAD.l-PAD.r), Y=s=>H-PAD.b-(s/ymax)*(H-PAD.t-PAD.b);
+
+  ctx.clearRect(0,0,W,H);
+  ctx.lineWidth=1; ctx.font="11px "+css("--mono"); ctx.textBaseline="middle";
+  for(let i=0;i<=6;i++){ const s=ymax*i/6, y=Y(s);
+    ctx.strokeStyle=grid; ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(W-PAD.r,y); ctx.stroke();
+    ctx.fillStyle=ink3; ctx.textAlign="right"; ctx.fillText(Math.round(s), PAD.l-9, y); }
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  for(let i=0;i<=6;i++){ const e=xmax*i/6, x=X(e);
+    ctx.strokeStyle=grid; ctx.beginPath(); ctx.moveTo(x,PAD.t); ctx.lineTo(x,H-PAD.b); ctx.stroke();
+    ctx.fillStyle=ink3; ctx.fillText(e.toFixed(e<0.1?3:2), x, H-PAD.b+8); }
+  ctx.strokeStyle=axis; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b); ctx.lineTo(W-PAD.r,H-PAD.b); ctx.stroke();
+
+  ctx.fillStyle=ink2; ctx.font="12px "+css("--sans"); ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.fillText(t("ax_x"), (PAD.l+W-PAD.r)/2, H-22);
+  ctx.save(); ctx.translate(15,(PAD.t+H-PAD.b)/2); ctx.rotate(-Math.PI/2); ctx.textBaseline="bottom"; ctx.fillText(t("ax_y"),0,0); ctx.restore();
+
+  const line=(pts,color,width,dash)=>{ ctx.strokeStyle=color; ctx.lineWidth=width; ctx.setLineDash(dash||[]);
+    ctx.lineJoin="round"; ctx.beginPath(); pts.forEach((p,i)=> i?ctx.lineTo(X(p[0]),Y(p[1])):ctx.moveTo(X(p[0]),Y(p[1]))); ctx.stroke(); ctx.setLineDash([]); };
+  line(eq.pts, quasi, 2, [7,5]);
+  ctx.globalAlpha=.85; line(pj, accent, 2, [2,4]); ctx.globalAlpha=1;
+  line(ep.pts, accent, 3.2);
+
+  const yx=X(ep.ey), yy=Y(ep.sy);
+  ctx.fillStyle=accent; ctx.beginPath(); ctx.arc(yx,yy,4.5,0,7); ctx.fill();
+  ctx.strokeStyle=css("--panel"); ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle=ink; ctx.font="600 11px "+css("--mono"); ctx.textAlign="left"; ctx.textBaseline="bottom";
+  ctx.fillText(t("lbl_sy")(Math.round(ep.sy)), Math.min(yx+9,W-180), yy-6);
+  ctx.fillStyle=ink2; ctx.font="italic 11px "+css("--sans"); ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText(t("lbl_E"), X(ep.ey*0.45)+8, Y(ep.sy*0.45));
+  if(P.B>0){ const eMid=ep.ey+(P.emax-ep.ey)*0.55;
+    ctx.fillStyle=accent; ctx.font="600 11px "+css("--mono"); ctx.textAlign="left"; ctx.textBaseline="top";
+    ctx.fillText("+ B·εⁿ", X(eMid)+6, Y(flow(eMid))+6); }
+
+  // --- mez lomu (JC kritérium porušení): za εf rovnice neplatí ---
+  if(fracEnabled){
+    const ef=fractureStrain(), sEf=flow(ef), efTot=ef+sEf/Empa(), FAIL="#d1454a";
+    if(efTot<=xmax){
+      ctx.fillStyle="rgba(209,69,74,0.10)"; ctx.fillRect(X(efTot),PAD.t,(W-PAD.r)-X(efTot),(H-PAD.b)-PAD.t);
+      ctx.strokeStyle=FAIL; ctx.lineWidth=1.6; ctx.setLineDash([5,4]);
+      ctx.beginPath(); ctx.moveTo(X(efTot),PAD.t); ctx.lineTo(X(efTot),H-PAD.b); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle=FAIL; ctx.beginPath(); ctx.arc(X(efTot),Y(sEf),4.5,0,7); ctx.fill();
+      ctx.strokeStyle=css("--panel"); ctx.lineWidth=1.5; ctx.stroke();
+      ctx.fillStyle=FAIL; ctx.font="600 11px "+css("--mono"); ctx.textAlign="left"; ctx.textBaseline="top";
+      ctx.fillText(t("frac_marker")(ef.toFixed(3)), Math.min(X(efTot)+7,W-PAD.r-120), PAD.t+6);
+      ctx.font="italic 10.5px "+css("--sans");
+      ctx.fillText(t("frac_invalid"), Math.min(X(efTot)+7,W-PAD.r-120), PAD.t+22);
+    } else {
+      ctx.fillStyle=FAIL; ctx.font="600 11px "+css("--mono"); ctx.textAlign="right"; ctx.textBaseline="top";
+      ctx.fillText(t("frac_off")(ef.toFixed(3)), W-PAD.r-4, PAD.t+4);
+    }
+  }
+
+  updateReadouts(R, ep); updateRegime();
+}
+
+/* ============================================================ readouts / vzorec / režim */
+const fmt=(x,d)=> x.toLocaleString(lang==="cs"?"cs-CZ":"en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const edotVal=()=> Math.pow(10,P.edot);
+
+function updateReadouts(R, ep){
+  const ed=edotVal(), therm=thermFactor(), usesC=M().uses.includes("C");
+  // --- readout čipy (počet dle modelu) ---
+  let ro=[[t("ro_sy"),Math.round(ep.sy),"MPa"]];
+  if(usesC) ro.push([t("ro_R"),fmt(R,3),"×"]);
+  if(modelKey==="full") ro.push([t("ro_theta"),fmt(therm,3),"×"]);
+  ro.push([t("ro_ey"),fmt(ep.ey,4),""], [t("ro_smax"),Math.round(flow(P.emax)),"MPa"]);
+  if(fracEnabled) ro.push([t("ro_ef"),fmt(fractureStrain(),3),""]);
+  const rd=document.getElementById("readouts");
+  rd.style.gridTemplateColumns=`repeat(${ro.length},minmax(120px,1fr))`;
+  rd.innerHTML = ro.map(r=>`<div class="ro"><div class="k">${r[0]}</div><div class="v">${r[1]}<span class="u">${r[2]}</span></div></div>`).join("");
+  // --- vzorec s dosazenými hodnotami (dle modelu) ---
+  const base=`[ <span class="term">${P.A.toFixed(0)}</span> + <span class="term">${P.B.toFixed(0)}</span>·ε<sup>${P.n.toFixed(2)}</sup> ]`;
+  const rateT=` · [ 1 + <span class="term">${P.C.toFixed(3)}</span>·ln(${fmt(ed,ed<10?2:0)}/1) ]`;
+  const thermT=` · [ 1 − T*<sup>${P.m.toFixed(2)}</sup> ],  T*=(${P.T.toFixed(0)}−293)/(${P.Tmelt}−293)`;
+  let sub = "σ = "+base + (usesC?rateT:"") + (modelKey==="full"?thermT:"");
+  document.getElementById("formula").innerHTML =
+    `<div class="lead">${t("formula_lead")[modelKey]}</div>${sub}<br>`+
+    `<span style="color:var(--ink-3)">${t("formula_elastic")}</span> σ = <span class="term">${P.E.toFixed(0)} GPa</span>·ε`+
+    ` &nbsp;${t("formula_upto")}&nbsp; σy = ${Math.round(ep.sy)} MPa`;
+  // --- poznámka (dle modelu) ---
+  let note;
+  if(modelKey==="static"){ note=t("ratenote_static"); }
+  else{ note=t("ratenote")(fmt(R,3), fmt(ed,ed<10?2:0)) + (R<1?t("ratenote_clamp"):"");
+        if(modelKey==="full") note+=t("thermnote")(fmt(therm,3), P.T.toFixed(0)); }
+  document.getElementById("rateNote").textContent = note;
+}
+
+function buildRegime(){
+  const names=t("regimes");
+  document.getElementById("regime").innerHTML = REGIMES.map((z,i)=>
+    `<div class="zone" style="flex:${z[1]-z[0]}; background:${css(z[2])}"><span class="t">${names[i].name}</span><span class="r">${z[3]} s⁻¹</span></div>`
+  ).join("") + `<div class="mk" id="mk"><span class="bub" id="mkbub"></span></div>`;
+}
+function updateRegime(){
+  const pos=(P.edot-(-3))/9, mk=document.getElementById("mk");
+  mk.style.left=(pos*100)+"%"; document.getElementById("mkbub").textContent=fmt(edotVal(),edotVal()<10?2:0)+" s⁻¹";
+  let i=REGIMES.findIndex(r=>P.edot>=r[0]&&P.edot<r[1]); if(i<0) i=REGIMES.length-1;
+  document.getElementById("regimeCap").innerHTML = t("regime_cap")(fmt(edotVal(),edotVal()<10?2:0), t("regimes")[i].name, t("regimes")[i].note);
+}
+
+/* ============================================================ UI */
+function buildMats(){
+  document.getElementById("matcount").textContent = t("matcount")(Object.keys(MATERIALS).length);
+  const nm=t("mats");
+  document.getElementById("mats").innerHTML = Object.entries(MATERIALS).map(([k,m])=>
+    `<button class="mat" data-k="${k}" style="--mc:${m.color}" aria-pressed="${k===current}">
+       <span class="nm"><span class="dot"></span>${nm[k]}</span>
+       <span class="sub">${m.grade} · A${m.A} B${m.B}</span></button>`).join("");
+  document.querySelectorAll(".mat").forEach(b=> b.onclick=()=>{
+    current=b.dataset.k; loadMaterial(current);
+    document.querySelectorAll(".mat").forEach(x=>x.setAttribute("aria-pressed", x.dataset.k===current));
+    syncSliders(); draw(); });
+}
+function buildSliders(){
+  const pp=t("params"), used=PARAMS.filter(p=>M().uses.includes(p.k));
+  document.getElementById("sliders").innerHTML =
+    `<h2><span>${t("h_params")}</span><span class="hint">${t("params_sub")}</span></h2>` + used.map(p=>`
+      <div class="slider">
+        <div class="row"><label>${pp[p.k].name}<span class="desc">${pp[p.k].desc}</span></label><span class="val" id="v-${p.k}"></span></div>
+        <input type="range" id="s-${p.k}" min="${p.min}" max="${p.max}" step="${p.step}"></div>`).join("");
+  used.forEach(p=>{ const s=document.getElementById("s-"+p.k);
+    s.addEventListener("input",()=>{ P[p.k]=parseFloat(s.value); paintSlider(p); draw(); }); });
+}
+function paintSlider(p){
+  const s=document.getElementById("s-"+p.k), v=document.getElementById("v-"+p.k);
+  if(!s||!v) return;
+  s.style.setProperty("--fill", ((P[p.k]-p.min)/(p.max-p.min))*100+"%");
+  if(p.log){ const r=Math.pow(10,P[p.k]);
+    v.innerHTML=(r>=1000?(r/1000).toFixed(r>=1e4?0:1)+"e3":r.toFixed(r<10?2:0))+`<span class="u">${p.u}</span>`; }
+  else{ const d=p.step<1?(p.step<0.01?3:2):0; v.innerHTML=P[p.k].toFixed(d)+(p.u?`<span class="u">${p.u}</span>`:""); }
+}
+function syncSliders(){ PARAMS.concat(fracEnabled?FRAC_PARAMS:[]).forEach(p=>{ const s=document.getElementById("s-"+p.k); if(s){ s.value=P[p.k]; paintSlider(p); } }); }
+
+function buildFracture(){
+  const pp=t("fparams");
+  let html=`<h2><span>${t("h_fracture")}</span></h2>`+
+    `<label class="chk"><input type="checkbox" id="fchk"${fracEnabled?" checked":""}> ${t("frac_toggle")}</label>`;
+  if(fracEnabled) html+=FRAC_PARAMS.map(p=>`
+      <div class="slider"><div class="row"><label>${pp[p.k].name}<span class="desc">${pp[p.k].desc}</span></label><span class="val" id="v-${p.k}"></span></div>
+        <input type="range" id="s-${p.k}" min="${p.min}" max="${p.max}" step="${p.step}"></div>`).join("");
+  html+=`<div class="note">${t("frac_note")}</div>`;
+  document.getElementById("fracture").innerHTML=html;
+  document.getElementById("fchk").addEventListener("change",e=>{ fracEnabled=e.target.checked; buildFracture(); draw(); });
+  if(fracEnabled) FRAC_PARAMS.forEach(p=>{ const s=document.getElementById("s-"+p.k); s.value=P[p.k]; paintSlider(p);
+    s.addEventListener("input",()=>{ P[p.k]=parseFloat(s.value); paintSlider(p); draw(); }); });
+}
+
+function buildPuzzle(){
+  const tags=["z-quasi","z-quasi","z-shpb","z-taylor"], cards=t("pc");
+  document.getElementById("puzzleGrid").innerHTML = cards.map((c,i)=>
+    `<div class="pc"><span class="tag" style="background:color-mix(in srgb,var(--${tags[i]}) 20%,var(--panel)); color:var(--${tags[i]})">${c.tag}</span>
+       <h3>${c.h3}</h3><p>${c.p}</p></div>`).join("");
+  document.getElementById("tryBox").innerHTML = `<h3>${t("try_h")}</h3><ul>${t("try").map(x=>`<li>${x}</li>`).join("")}</ul>`;
+}
+
+/* ---- zoom / reset pohledu ---- */
+// Zoom osy ε jen s Ctrl; bez Ctrl kolečko normálně scrolluje stránku.
+cv.addEventListener("wheel", e=>{ if(!e.ctrlKey) return;
+  e.preventDefault();
+  P.emax=Math.min(0.5,Math.max(0.02,P.emax*(e.deltaY>0?1.12:1/1.12)));
+  document.getElementById("s-emax").value=P.emax; paintSlider(PARAMS.find(p=>p.k==="emax")); draw();
+}, {passive:false});
+cv.addEventListener("dblclick", ()=>{ P.emax=0.15; syncSliders(); freezeYAxis(); draw(); });
+
+// Kolečko myši nad posuvníkem NEMÁ měnit jeho hodnotu (výchozí chování prohlížeče) —
+// místo toho scrolluj stránku. Hodnota se změní jen tažením/klikem. (delegace = i pro znovu-sestavené posuvníky)
+document.addEventListener("wheel", e=>{
+  const el=e.target;
+  if(el && el.tagName==="INPUT" && el.type==="range"){ e.preventDefault(); window.scrollBy(0, e.deltaY); }
+}, {passive:false});
+
+/* ---- export PNG ---- */
+function exportPNG(){
+  const pad=26, headH=70, footH=46, w=W, h=H, sc=2;
+  const ec=document.createElement("canvas"); ec.width=(w+pad*2)*sc; ec.height=(h+headH+footH)*sc;
+  const g=ec.getContext("2d"); g.scale(sc,sc);
+  g.fillStyle=css("--panel"); g.fillRect(0,0,w+pad*2,h+headH+footH);
+  const m=MATERIALS[current];
+  g.fillStyle=css("--ink"); g.font="600 18px "+css("--sans"); g.textAlign="left"; g.textBaseline="top";
+  g.fillText(`Johnson–Cook · ${t("mats")[current]} (${m.grade})`, pad, 16);
+  g.fillStyle=css("--ink-2"); g.font="12px "+css("--mono");
+  g.fillText(`A=${P.A}  B=${P.B}  n=${P.n}  C=${P.C}  E=${P.E} GPa  ε̇=${fmt(edotVal(),edotVal()<10?2:0)} s⁻¹  R=${fmt(rateFactor(),3)}`, pad, 43);
+  g.drawImage(cv, 0,0,cv.width,cv.height, pad, headH, w, h);
+  g.fillStyle=css("--ink-3"); g.font="11px "+css("--mono");
+  g.fillText("σ = [A + B·εⁿ]·[1 + C·ln(ε̇/ε̇₀)]   ·   ε̇₀ = 1 s⁻¹   ·   Johnson–Cook Explorer", pad, headH+h+14);
+  const a=document.createElement("a"); a.download=`JC_${current}_edot${Math.round(edotVal())}.png`; a.href=ec.toDataURL("image/png"); a.click();
+}
+
+/* ---- motiv + jazyk ---- */
+function updateThemeLabel(){
+  document.getElementById("themeIcon").textContent = themeDark?"☀":"☾";
+  document.getElementById("themeTxt").textContent = themeDark? t("theme_light") : t("theme_dark");
+}
+function initTheme(){
+  const btn=document.getElementById("themeBtn"); let cur=null;
+  const apply=tval=>{ if(tval) document.documentElement.setAttribute("data-theme",tval); else document.documentElement.removeAttribute("data-theme");
+    themeDark = tval? tval==="dark" : matchMedia("(prefers-color-scheme:dark)").matches;
+    updateThemeLabel(); buildRegime(); draw(); };
+  btn.onclick=()=>{ const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme:dark)").matches; cur=dark?"light":"dark"; apply(cur); };
+  apply(null);
+}
+function applyLang(){
+  document.documentElement.lang = lang;
+  const set=(id,html)=>{ const el=document.getElementById(id); if(el) el.innerHTML=html; };
+  set("eyebrow",t("eyebrow")); set("intro",t("intro"));
+  set("h-model",t("h_model")); set("h-material",t("h_material"));
+  set("h-formula",t("h_formula")); set("h-regime",t("h_regime")); set("regime-hint",t("regime_hint")); set("h-puzzle",t("h_puzzle"));
+  set("zoomhint",t("zoomhint")); set("footer",t("footer")); set("autoY-lbl",t("autoy_toggle"));
+  set("opt-full",t("model_full")); set("opt-rate",t("model_rate")); set("opt-static",t("model_static"));
+  set("reset",t("reset_mat")); set("fit",t("reset_view")); set("png",t("png"));
+  set("lg-main",t("lg_main")); set("lg-quasi",t("lg_quasi")); set("lg-pure",t("lg_pure"));
+  document.getElementById("langTxt").textContent = lang==="cs"?"EN":"CZ";
+  updateThemeLabel(); updateFsLabel();
+  buildMats(); buildSliders(); buildFracture(); syncSliders(); buildRegime(); buildPuzzle(); draw();
+}
+
+/* ---- fullscreen (celá pracovní plocha: ovládání + graf); s CSS fallbackem ---- */
+const appEl = document.getElementById("app");
+function nativeFs(){ return (document.fullscreenElement||document.webkitFullscreenElement)===appEl; }
+function fsActive(){ return nativeFs() || appEl.classList.contains("fs-fallback"); }
+function updateFsLabel(){ const el=document.getElementById("fsTxt"); if(el) el.textContent = fsActive()?t("fs_exit"):t("fs_enter"); }
+function setFallback(on){ appEl.classList.toggle("fs-fallback", on); updateFsLabel(); setTimeout(resize,60); }
+function toggleFs(){
+  if(nativeFs()){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); return; }
+  if(appEl.classList.contains("fs-fallback")){ setFallback(false); return; }
+  const req=appEl.requestFullscreen||appEl.webkitRequestFullscreen;
+  if(req){ const p=req.call(appEl); if(p&&p.catch) p.catch(()=>setFallback(true)); }
+  else setFallback(true);
+}
+["fullscreenchange","webkitfullscreenchange"].forEach(ev=>
+  document.addEventListener(ev, ()=>{ updateFsLabel(); setTimeout(resize,60); }));
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && appEl.classList.contains("fs-fallback")) setFallback(false); });
+
+/* ============================================================ start */
+loadMaterial(current); initTheme(); applyLang(); resize();
+window.addEventListener("resize", resize);
+document.getElementById("reset").onclick=()=>{ loadMaterial(current); syncSliders(); draw(); };
+document.getElementById("fit").onclick=()=>{ P.emax=0.15; syncSliders(); freezeYAxis(); draw(); };
+document.getElementById("png").onclick=exportPNG;
+document.getElementById("model").onchange=e=>{ modelKey=e.target.value; buildSliders(); syncSliders(); freezeYAxis(); draw(); };
+document.getElementById("langBtn").onclick=()=>{ lang = lang==="cs"?"en":"cs"; applyLang(); };
+document.getElementById("fsBtn").onclick=toggleFs;
+const autoYbox=document.getElementById("autoY"); autoYbox.checked=autoY;
+autoYbox.addEventListener("change", e=>{ autoY=e.target.checked; if(!autoY) freezeYAxis(); draw(); });
+</script>
+</body>
+</html>
