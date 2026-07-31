@@ -66,8 +66,10 @@ computes `εf`, marks the **fracture limit** on the curve and greys out the regi
 
 ![JC fracture criterion — fracture strain vs stress triaxiality](assets/jc_fracture.png)
 
-`D1…D5` are published for copper (OFHC), steel 4340, aluminium 2024‑T351 and Ti‑6Al‑4V; the rest
-are **illustrative** — replace with your own data.
+`D1…D5` are the **original Johnson & Cook (1985)** values for **copper (OFHC)** and **4340 steel**
+(the 1985 paper fitted three metals: OFHC copper, Armco iron and 4340 steel). For **2024‑T351** and
+**Ti‑6Al‑4V** they are taken from **other published sources**. All remaining materials use an
+**illustrative placeholder** — replace with your own data.
 
 ### Controls
 - **Material** — 11 representative JC sets (copper, brass, nickel, iron, steels, aluminium alloys,
@@ -144,8 +146,10 @@ teplotě:
 
 ![Kritérium porušení JC](assets/jc_fracture.png)
 
-`D1…D5` jsou publikované pro měď (OFHC), ocel 4340, hliník 2024‑T351 a Ti‑6Al‑4V; ostatní jsou
-**ilustrativní** — nahraď svými daty.
+`D1…D5` jsou **původní hodnoty Johnson & Cook (1985)** pro **měď (OFHC)** a **ocel 4340**
+(paper z roku 1985 proměřil tři kovy: OFHC měď, Armco železo a ocel 4340). Pro **2024‑T351** a
+**Ti‑6Al‑4V** pocházejí z **jiných publikovaných zdrojů**. Ostatní materiály mají **ilustrativní
+placeholder** — nahraď svými daty.
 
 ### Ovládání
 - **Materiál** — 11 reprezentativních JC sad (měď, mosaz, nikl, železo, oceli, hliníky,
